@@ -1,34 +1,16 @@
-# Unreal Engine 4
-Binaries/
-DerivedDataCache/
-Intermediate/
-Saved/
-Build/
-.vs/
-.vscode/
+Binaries
+DerivedDataCache
+Intermediate
+Saved
+.vscode
+.vs
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
 *.sln
 *.suo
-*.opensdf
-*.sdf
-*.VC.db
-*.VC.opendb
-
-# Compiled assets
-*.apk
-*.a
-*.so
-*.dll
-*.lib
-*.dylib
-
-# Logs and temp files
-*.log
-*.tmp
-*.bak
-*.pid
-*.DS_Store
-
-# OS generated
-Thumbs.db
-ehthumbs.db
-Desktop.ini
+*.xcodeproj
+*.xcworkspace
+**/node_modules
+**/.idea
