@@ -10,17 +10,12 @@
 
 AWebSocketActor::AWebSocketActor()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 }
-
-// Called when the game starts or when spawned
 void AWebSocketActor::BeginPlay()
 {
 	Super::BeginPlay();
 }
-
-// Called every frame
 void AWebSocketActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
@@ -29,16 +24,6 @@ void AWebSocketActor::Tick(float DeltaTime)
 void AWebSocketActor::ConnectToServer(const FString& ServerURL)
 {
 	FString FullUrl;
-	//if (WebSocket.IsValid() && WebSocket->IsConnected()) {
-	//	if (CurrentUrl == ServerURL) {
-	//		UE_LOG(LogTemp, Warning, TEXT("Already connected to this URL"));
-	//		return;
-	//	}
-	//	WebSocket->Close();
-	//}
-
-	//CurrentUrl = ServerURL;
-
 	FullUrl = FString::Printf(TEXT("%s"), *ServerURL);
 
 	FModuleManager::Get().LoadModule("WebSockets");
@@ -118,7 +103,7 @@ bool AWebSocketActor::IsConnected() const
 }
 
 // Метод отправки хода в игре
-void AWebSocketActor::MakeMove(int32 X, int32 Y, int32 MoveId)
+void AWebSocketActor::MakeMove(int32 X, int32 Y)
 {
 	if (!bGameStarted)
 	{
@@ -126,11 +111,13 @@ void AWebSocketActor::MakeMove(int32 X, int32 Y, int32 MoveId)
 		return;
 	}
 
+	CurrentMoveId++;
+
 	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
 	JsonObject->SetStringField("type", "game");
 
 	TSharedPtr<FJsonObject> MessageObject = MakeShareable(new FJsonObject);
-	MessageObject->SetNumberField("move_id", MoveId);
+	MessageObject->SetNumberField("move_id", CurrentMoveId);
 	MessageObject->SetNumberField("x", X);
 	MessageObject->SetNumberField("y", Y);
 
@@ -150,7 +137,13 @@ void AWebSocketActor::RequestGameState()
 void AWebSocketActor::RequestPresence()
 {
 	TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
-	JsonObject->SetStringField("type", "join");
+	JsonObject->SetStringField("type", "presence");
+
+	TSharedPtr<FJsonObject> MessageObject = MakeShareable(new FJsonObject);
+	MessageObject->SetStringField("action", "join");
+	
+	JsonObject->SetObjectField("message", MessageObject);
+
 	SendJsonMessage(JsonObject);
 }
 
@@ -255,9 +248,10 @@ void AWebSocketActor::ProcessJsonMessage(const TSharedPtr<FJsonObject>& JsonObje
 	}
 	else if (Type == "start_broadcast")
 	{
+		RequestGameState();
 		UE_LOG(LogTemp, Warning, TEXT("Game started! Broadcast received."));
 		bGameStarted = true;
-		UE_LOG(LogTemp, Warning, TEXT("Received start_broadcast"));
+
 		OnStartBroadcast.Broadcast();
 	}
 	else if (Type == "new_move_broadcast")
@@ -282,9 +276,27 @@ void AWebSocketActor::ProcessJsonMessage(const TSharedPtr<FJsonObject>& JsonObje
 					Move->TryGetNumberField("side", Side) &&
 					Move->TryGetNumberField("times_used", TimesUsed))
 				{
-					if (OnMoveEvent.IsBound())
+					UE_LOG(LogTemp, Warning, TEXT("[WebSocket] Move: Type=%s, MoveId=%d, X=%d, Y=%d, Side=%d, TimesUsed=%d"),
+						*MoveType, MoveId, X, Y, Side, TimesUsed);
+
+					if (MoveType == "place_move")
 					{
+						if (MoveId > CurrentMoveId)
+						{
+							CurrentMoveId = MoveId;
+						}
+						else if (MoveId < CurrentMoveId)
+						{
+							CurrentMoveId = MoveId;
+						}
+						UE_LOG(LogTemp, Warning, TEXT("[WebSocket] Move for if place_move: Type=%s, MoveId=%d, X=%d, Y=%d, Side=%d, TimesUsed=%d"),
+							*MoveType, MoveId, X, Y, Side, TimesUsed);
 						OnMoveEvent.Broadcast(MoveType, MoveId, X, Y, Side, TimesUsed);
+					}
+					else if (MoveType == "remove_move")
+					{
+						UE_LOG(LogTemp, Warning, TEXT("Remove move at X=%d Y=%d Side=%d"), X, Y, Side);
+						OnRemoveMoveEvent.Broadcast(X, Y, 0);
 					}
 				}
 			}
@@ -300,17 +312,6 @@ void AWebSocketActor::ProcessJsonMessage(const TSharedPtr<FJsonObject>& JsonObje
 	}
 	else if (Type == "game_state_response")
 	{
-		FString State = JsonObject->GetStringField("state");
-		if (State == "started")
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Game state is started"));
-			OnStartBroadcast.Broadcast(); // Покажи поле
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Game state is: %s"), *State);
-		}
-
 		HandleGameStateResponse(JsonObject);
 	}
 	else if (Type == "sync_response")
@@ -325,8 +326,6 @@ void AWebSocketActor::ProcessJsonMessage(const TSharedPtr<FJsonObject>& JsonObje
 	}
 }
 
-
-// В классе AWebSocketActor добавьте этот метод
 void AWebSocketActor::HandleGameStateResponse(const TSharedPtr<FJsonObject>& JsonObject)
 {
 	FGameStateResponseData GameStateData;
@@ -407,6 +406,12 @@ void AWebSocketActor::HandleGameStateResponse(const TSharedPtr<FJsonObject>& Jso
 
 	// Также отправляем упрощенные данные через старый делегат для совместимости
 	OnGameStateReceived.Broadcast(GameStateData.State, GameStateData.Winner);
+
+	if (GameStateData.State == "started" && !bGameStarted)
+	{
+		bGameStarted = true;
+		OnStartBroadcast.Broadcast();
+	}
 }
 
 // Альтернативный метод отправки простых JSON-сообщений с типом и координатами

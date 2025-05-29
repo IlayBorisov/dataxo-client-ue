@@ -25,4 +25,10 @@ public:
 
 	UPROPERTY(BlueprintReadWrite)
 		FString GameIdForTextBox;
+
+	UPROPERTY(BlueprintReadWrite)
+		int32 board_wight;
+
+	UPROPERTY(BlueprintReadWrite)
+		int32 board_height;
 };
