@@ -70,7 +70,6 @@ void AWebSocketActor::CreateGame()
 
 void AWebSocketActor::JoinGame(const FString& InGameId)
 {
-	 //Генерируем новый ClientId ТОЛЬКО при присоединении
 	if (GameJoinerClientId.IsEmpty())
 	{
 		GameJoinerClientId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
@@ -316,9 +315,9 @@ void AWebSocketActor::ProcessJsonMessage(const TSharedPtr<FJsonObject>& JsonObje
 	}
 	else if (Type == "sync_response")
 	{
-	FString State = JsonObject->GetStringField("state");
-	int32 Winner = JsonObject->GetIntegerField("winner");
-	OnGameStateReceived.Broadcast(State, Winner);
+		FString State = JsonObject->GetStringField("state");
+		int32 Winner = JsonObject->GetIntegerField("winner");
+		OnGameStateReceived.Broadcast(State, Winner);
 	}
 	else
 	{
@@ -353,30 +352,6 @@ void AWebSocketActor::HandleGameStateResponse(const TSharedPtr<FJsonObject>& Jso
 		(*ConfigObject)->TryGetNumberField("board_height", GameStateData.Config.BoardHeight);
 	}
 
-	// Парсим moves
-	const TArray<TSharedPtr<FJsonValue>>* MovesArray;
-	if (JsonObject->TryGetArrayField("moves", MovesArray))
-	{
-		TArray<FMoveData> TempMoves;
-		for (const TSharedPtr<FJsonValue>& MoveValue : *MovesArray)
-		{
-			const TSharedPtr<FJsonObject> MoveObject = MoveValue->AsObject();
-			if (MoveObject.IsValid())
-			{
-				FMoveData Move;
-				MoveObject->TryGetNumberField("id", Move.Id);
-				MoveObject->TryGetNumberField("in_game_id", Move.InGameId);
-				MoveObject->TryGetNumberField("x", Move.X);
-				MoveObject->TryGetNumberField("y", Move.Y);
-				MoveObject->TryGetNumberField("times_used", Move.TimesUsed);
-				MoveObject->TryGetNumberField("side", Move.Side);
-
-				TempMoves.Add(Move);
-			}
-		}
-		GameStateData.Moves = TempMoves;
-	}
-
 	// Парсим win_sequence
 	const TArray<TSharedPtr<FJsonValue>>* WinSequenceArray;
 	if (JsonObject->TryGetArrayField("win_sequence", WinSequenceArray))
@@ -401,13 +376,36 @@ void AWebSocketActor::HandleGameStateResponse(const TSharedPtr<FJsonObject>& Jso
 		GameStateData.WinSequence = TempWinMoves;
 	}
 
+	// Парсим moves
+	const TArray<TSharedPtr<FJsonValue>>* MovesArray;
+	if (JsonObject->TryGetArrayField("moves", MovesArray))
+	{
+		TArray<FMoveData> TempMoves;
+		for (const TSharedPtr<FJsonValue>& MoveValue : *MovesArray)
+		{
+			const TSharedPtr<FJsonObject> MoveObject = MoveValue->AsObject();
+			if (MoveObject.IsValid())
+			{
+				FMoveData Move;
+				MoveObject->TryGetNumberField("id", Move.Id);
+				MoveObject->TryGetNumberField("in_game_id", Move.InGameId);
+				MoveObject->TryGetNumberField("x", Move.X);
+				MoveObject->TryGetNumberField("y", Move.Y);
+				MoveObject->TryGetNumberField("times_used", Move.TimesUsed);
+				MoveObject->TryGetNumberField("side", Move.Side);
+
+				TempMoves.Add(Move);
+			}
+		}
+		GameStateData.Moves = TempMoves;
+	}
 	// Отправляем данные через делегат
 	OnGameStateResponseReceived.Broadcast(GameStateData);
 
 	// Также отправляем упрощенные данные через старый делегат для совместимости
 	OnGameStateReceived.Broadcast(GameStateData.State, GameStateData.Winner);
 
-	if (GameStateData.State == "started" && !bGameStarted)
+	if (GameStateData.State == "started" && !bGameStarted) 
 	{
 		bGameStarted = true;
 		OnStartBroadcast.Broadcast();
