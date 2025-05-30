@@ -93,6 +93,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameStateResponseReceived, const 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGameCreated, const FString&, GameId, int32, Side);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGameStateReceived, const FString&, State, int32, Winner);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnErrorMessage, const FString&, ErrorText, bool, bNeedResync);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnRemoveMoveEvent, int32, X, int32, Y, int32, side);
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FMyParsedMessageDelegate, const FString&, Type, int32, X, int32, Y);
 
@@ -136,7 +137,7 @@ public:
         void JoinGame(const FString& InGameId);
 
     UFUNCTION(BlueprintCallable, Category = "WebSocket|Game")
-        void MakeMove(int32 X, int32 Y, int32 MoveId = 0);
+        void MakeMove(int32 X, int32 Y);
 
     UFUNCTION(BlueprintCallable, Category = "WebSocket|Game")
         void RequestGameState();
@@ -191,6 +192,9 @@ public:
     UPROPERTY(BlueprintAssignable, Category = "WebSocket|Game")
         FOnMoveEvent OnMoveEvent;
 
+    UPROPERTY(BlueprintAssignable, Category = "WebSocket|Game")
+        FOnRemoveMoveEvent OnRemoveMoveEvent;
+
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "WebSocket")
         FString GameId;
 
@@ -209,4 +213,6 @@ private:
 
     FString GameCreatorClientId; // ƒл€ создател€ игры
     FString GameJoinerClientId; // ƒл€ присоедин€ющегос€ игрока
+
+    int32 CurrentMoveId = -1;
 };
