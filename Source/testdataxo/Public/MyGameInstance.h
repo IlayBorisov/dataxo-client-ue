@@ -1,10 +1,7 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
-//#include "WebSocketActor.h"
 #include "MyGameInstance.generated.h"
 
 UCLASS()
@@ -31,4 +28,10 @@ public:
 
 	UPROPERTY(BlueprintReadWrite)
 		int32 board_height;
+
+	UPROPERTY(BlueprintReadWrite, Category = "WebSocket")
+		FString CreatorID;
+
+protected:
+	virtual void Init() override;
 };

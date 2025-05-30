@@ -58,22 +58,26 @@ void AWebSocketActor::ConnectToServer(const FString& ServerURL)
 // Создание игры
 void AWebSocketActor::CreateGame()
 {
-	if (GameCreatorClientId.IsEmpty())
-	{
-		GameCreatorClientId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
-		UE_LOG(LogTemp, Log, TEXT("Generated GameCreatorClientId: %s"), *GameCreatorClientId);
-	}
+	UMyGameInstance* GameInstance = Cast<UMyGameInstance>(GetGameInstance());
+	if (!GameInstance) return;
+
+	// Используем уже сгенерированный ID
+	GameCreatorClientId = GameInstance->CreatorID;
+
 	const FString FullUrl = FString::Printf(TEXT("ws://51.250.40.190:8080/api/v1/games/create/%s"), *GameCreatorClientId);
+	
+	UE_LOG(LogTemp, Log, TEXT("Generated GameCreatorClientId: %s"), *GameCreatorClientId);
 	UE_LOG(LogTemp, Log, TEXT("FullUrl for Created games: %s"), *FullUrl);
+	
 	ConnectToServer(FullUrl);
 }
 
 void AWebSocketActor::JoinGame(const FString& InGameId)
 {
-	if (GameJoinerClientId.IsEmpty())
-	{
-		GameJoinerClientId = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
-	}
+	UMyGameInstance* GameInstance = Cast<UMyGameInstance>(GetGameInstance());
+	if (!GameInstance) return;
+
+	GameJoinerClientId = GameInstance->CreatorID;
 
 	const FString FullUrl = FString::Printf(
 		TEXT("ws://51.250.40.190:8080/api/v1/games/%s/%s"),
@@ -83,6 +87,7 @@ void AWebSocketActor::JoinGame(const FString& InGameId)
 
 	UE_LOG(LogTemp, Warning, TEXT("Joining game with JoinerID: %s"), *GameJoinerClientId);
 	UE_LOG(LogTemp, Warning, TEXT("FullUrl for Join for games: %s"), *FullUrl);
+
 	ConnectToServer(FullUrl);
 }
 
@@ -409,6 +414,18 @@ void AWebSocketActor::HandleGameStateResponse(const TSharedPtr<FJsonObject>& Jso
 	{
 		bGameStarted = true;
 		OnStartBroadcast.Broadcast();
+	}
+
+	if (GameStateData.Moves.Num() > 0)
+	{
+		int32 MaxMoveId = 0;
+		for (const FMoveData& Move : GameStateData.Moves)
+		{
+			if (Move.InGameId > MaxMoveId)
+				MaxMoveId = Move.InGameId;
+		}
+		CurrentMoveId = MaxMoveId;
+		UE_LOG(LogTemp, Warning, TEXT("Synced CurrentMoveId to %d"), CurrentMoveId);
 	}
 }
 
