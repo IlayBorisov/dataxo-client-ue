@@ -19,5 +19,8 @@
 			"Name": "WebSocketNetworking",
 			"Enabled": true
 		}
+	],
+	"TargetPlatforms": [
+		"WindowsNoEditor"
 	]
 }
